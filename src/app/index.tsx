@@ -1,98 +1,168 @@
-import * as Device from 'expo-device';
-import { Platform, StyleSheet } from 'react-native';
+import { colors } from '@/constants/colors';
+import { LinearGradient } from 'expo-linear-gradient';
+import * as Location from 'expo-location';
+import { useRouter } from 'expo-router';
+import { useEffect, useState } from 'react';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { AnimatedIcon } from '@/components/animated-icon';
-import { HintRow } from '@/components/hint-row';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { WebBadge } from '@/components/web-badge';
-import { BottomTabInset, MaxContentWidth, Spacing } from '@/constants/theme';
-
-function getDevMenuHint() {
-  if (Platform.OS === 'web') {
-    return <ThemedText type="small">use browser devtools</ThemedText>;
-  }
-  if (Device.isDevice) {
-    return (
-      <ThemedText type="small">
-        shake device or press <ThemedText type="code">m</ThemedText> in terminal
-      </ThemedText>
-    );
-  }
-  const shortcut = Platform.OS === 'android' ? 'cmd+m (or ctrl+m)' : 'cmd+d';
-  return (
-    <ThemedText type="small">
-      press <ThemedText type="code">{shortcut}</ThemedText>
-    </ThemedText>
-  );
-}
-
 export default function HomeScreen() {
+  const router = useRouter();
+  const [address, setAddress] = useState('위치 확인 중...');
+  const [locationReady, setLocationReady] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if(status !== 'granted') {
+        setAddress('위치 권한이 필요해요');
+        return;
+      }
+
+      const position = await Location.getCurrentPositionAsync({});
+      const [place] = await Location.reverseGeocodeAsync({
+        latitude: position.coords.latitude,
+        longitude: position.coords.longitude,
+      });
+
+      if(place){
+        setAddress(`${place.region ?? ''} ${place.city ?? ''} ${place.district ?? ''}`.trim());
+        setLocationReady(true)
+      }
+    })();
+  }, []);
+
+  const handleAnalyze = () => {
+    router.push({ pathname: '/result', params: { address} });
+  }
+
   return (
-    <ThemedView style={styles.container}>
+    <View style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
-        <ThemedView style={styles.heroSection}>
-          <AnimatedIcon />
-          <ThemedText type="title" style={styles.title}>
-            Welcome to&nbsp;Expo
-          </ThemedText>
-        </ThemedView>
+        {/* Step 2에서 헤더 + 위치 섹션 채울 자리 */}
 
-        <ThemedText type="code" style={styles.code}>
-          get started
-        </ThemedText>
+        <View style={styles.header}>
+          <Text style={styles.headerLogo}>≋ 비켜줄래?</Text>
+        </View>
 
-        <ThemedView type="backgroundElement" style={styles.stepContainer}>
-          <HintRow
-            title="Try editing"
-            hint={<ThemedText type="code">src/app/index.tsx</ThemedText>}
-          />
-          <HintRow title="Dev tools" hint={getDevMenuHint()} />
-          <HintRow
-            title="Fresh start"
-            hint={<ThemedText type="code">npm run reset-project</ThemedText>}
-          />
-        </ThemedView>
+        <View style={styles.locationSection}>
+          <Text style={styles.locationLabel}>📍 현재 위치 · GPS</Text>
+          <Text style={styles.locationTitle}>{address}</Text>
+          <Text style={styles.locationDesc}>
+            내 위치 주변의 침수 위험을 AI가 실시간으로 예측합니다.
+          </Text>
+        </View>
 
-        {Platform.OS === 'web' && <WebBadge />}
+        <View style={styles.statsRow}>
+          <View style={styles.statCard}>
+            <Text style={styles.statLabel}>🌧️ 현재 강수량</Text>
+            <Text style={styles.statValue}>22mm/h</Text>
+          </View>
+
+          <View style={styles.statCard}>
+            <Text style={styles.statLabel}>📈 현재 수위</Text>
+            <Text style={styles.statValue}>2.4m</Text>
+          </View>
+        </View>
+
+        <Pressable
+          onPress={handleAnalyze}
+          disabled={!locationReady}
+          style={({ pressed }) => ({ opacity: !locationReady ? 0.4 : pressed ? 0.8 : 1 })}
+        >
+          <LinearGradient
+            colors={[colors.accentTeal, colors.accentBlue]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.analyzeButton}
+          >            
+              <Text style={styles.analyzeButtonText}>침수 위험 분석하기</Text> 
+          </LinearGradient>
+        </Pressable>
+
+        <Text style={styles.infoText}>
+          ⓘ 본 위험도는 공공데이터 기반 AI 예측 결과이며, 공식 재난 경보를 대체하지 않습니다.
+        </Text>
       </SafeAreaView>
-    </ThemedView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  header: {
+    alignItems: 'flex-end',
+  },
+  headerLogo: {
+    color: colors.textSecondary,
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  locationSection: {
+    marginTop: 24,
+  },
+  locationLabel: {
+    color: colors.accentTeal,
+    fontSize: 13,
+    fontWeight: '600',
+    marginBottom: 8,
+  },
+  locationTitle: {
+    color: colors.textPrimary,
+    fontSize: 28,
+    fontWeight: '700',
+    marginBottom: 8,
+  },
+  locationDesc: {
+    color: colors.textSecondary,
+    fontSize: 14,
+    lineHeight: 20,
+  },
   container: {
     flex: 1,
-    justifyContent: 'center',
-    flexDirection: 'row',
+    backgroundColor: colors.background,
   },
   safeArea: {
     flex: 1,
-    paddingHorizontal: Spacing.four,
-    alignItems: 'center',
-    gap: Spacing.three,
-    paddingBottom: BottomTabInset + Spacing.three,
-    maxWidth: MaxContentWidth,
+    paddingHorizontal: 20,
+    paddingTop: 12,
   },
-  heroSection: {
-    alignItems: 'center',
-    justifyContent: 'center',
+
+  statsRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 24,
+  },
+  statCard: {
     flex: 1,
-    paddingHorizontal: Spacing.four,
-    gap: Spacing.four,
+    backgroundColor: colors.card,
+    borderRadius: 16,
+    padding: 16,
   },
-  title: {
-    textAlign: 'center',
+  statLabel: {
+    color: colors.textSecondary,
+    fontSize: 13,
+    marginBottom: 12,
   },
-  code: {
-    textTransform: 'uppercase',
+  statValue: {
+    color: colors.textPrimary,
+    fontSize: 22,
+    fontWeight: '700',
   },
-  stepContainer: {
-    gap: Spacing.three,
-    alignSelf: 'stretch',
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.four,
-    borderRadius: Spacing.four,
+  analyzeButton: {
+    marginTop: 24,
+    borderRadius: 14,
+    paddingVertical: 16,
+    alignItems: 'center',
+  },
+  analyzeButtonText: {
+    color: colors.background,
+    fontSize: 16,
+    fontWeight: '700',
+  },
+  infoText: {
+    color: colors.textSecondary,
+    fontSize: 12,
+    lineHeight: 18,
+    marginTop: 16,
   },
 });
