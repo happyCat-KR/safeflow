@@ -17,8 +17,13 @@
 ## ① 홈 화면 - 현재 상태 조회
 
 ```
-GET /api/current-status?region={지역}
+GET /api/current-status?lat={위도}&lng={경도}&region={지역}
 ```
+
+| 파라미터 | 타입 | 설명 |
+|---|---|---|
+| `lat` / `lng` | number | GPS 좌표. **관측소/지역 매칭은 이 좌표 기준으로 처리** |
+| `region` | string | 화면 표시용 도시명 텍스트 (예: "양주시", "경기도 용인시 기흥구"). 지역마다 행정구역 단계가 달라 포맷이 일정하지 않으므로 매칭에는 사용하지 말 것 |
 
 **응답**
 ```json
@@ -43,8 +48,13 @@ GET /api/current-status?region={지역}
 POST /api/flood-risk
 Content-Type: application/json
 
-{ "region": "서울특별시 강남구" }
+{ "lat": 37.4979, "lng": 127.0276, "region": "서울특별시 강남구" }
 ```
+
+| 필드 | 타입 | 설명 |
+|---|---|---|
+| `lat` / `lng` | number | GPS 좌표. **관측소/지역 매칭은 이 좌표 기준으로 처리** |
+| `region` | string | 화면 표시용 도시명 텍스트. 매칭에는 사용하지 말 것 |
 
 **응답**
 ```json
@@ -98,8 +108,7 @@ Content-Type: application/json
 
 ## 확인 필요 사항
 
-1. **`region` 포맷**: 정확한 GPS 좌표(lat/lng) 기준인가요, 행정구역명(구/동) 기준인가요?
-   저희 앱은 GPS reverse-geocode로 얻은 `구/동` 단위 텍스트를 사용합니다. 좌표 기준이면 별도 협의가 필요합니다.
+1. ~~`region` 포맷~~ → **해결**: `lat`/`lng` 좌표를 같이 보내드리기로 함. 관측소/지역 매칭은 좌표 기준, `region` 텍스트는 화면 표시 전용.
 2. **데이터 갱신 주기**: 강수량/수위/위험도가 얼마나 자주 갱신되나요?
 3. **배포 방식**: 직접 서버로 배포하실 예정인가요, 혹은 구글 시트(CSV publish) 방식도 가능한가요?
    - 시트 방식은 `region`이 행정구역 단위로 유한할 때만 가능합니다.
