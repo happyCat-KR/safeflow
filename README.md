@@ -1,56 +1,73 @@
-# Welcome to your Expo app 👋
+# 비켜줄래? (SafeFlow)
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+내 위치 주변의 침수 위험을 예측해주는 Expo(React Native) 앱입니다.
 
-## Get started
+## 로컬에서 실행하는 법
 
-1. Install dependencies
+1. 저장소 클론 후 이 폴더(`app`)로 이동
+
+   ```bash
+   git clone https://github.com/happyCat-KR/safeflow.git
+   cd safeflow/app
+   ```
+
+2. 패키지 설치
 
    ```bash
    npm install
    ```
 
-2. Start the app
+3. 개발 서버 실행
 
    ```bash
    npx expo start
    ```
 
-In the output, you'll find options to open the app in a
+4. 터미널에 뜨는 QR코드를 폰의 **Expo Go** 앱(App Store / Play 스토어에서 설치)으로 스캔
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+   - 노트북과 폰이 **같은 wifi**에 있어야 합니다.
+   - 다른 네트워크(예: 폰은 데이터, 노트북은 다른 wifi)라면 `npx expo start --tunnel`로 실행하세요.
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+## 프로젝트 구조 (핵심만)
 
-## Get a fresh project
-
-When you're ready, run:
-
-```bash
-npm run reset-project
+```
+src/
+  app/
+    index.tsx                 # 홈 화면 (GPS 위치, 강수량/수위 요약, "분석하기" 버튼)
+    result.tsx                 # 분석 결과 화면 (위험도 점수, 강수/수위 상세, 행동요령 진입점)
+    action-guide/
+      index.tsx                # 행동요령 1단계: 상황 선택 (건물 안 / 차량 이동 중 / 도보 / 주차)
+      situation.tsx             # 행동요령 2단계: 건물·차량 이동 중일 때 세부 상황 선택
+      result.tsx                 # 행동요령 결과: 상황+위험등급에 맞는 행동요령 카드
+  constants/
+    actionGuideData.ts          # ★ 행동요령 문구 원본 데이터 (아래 참고)
+    colors.ts                   # 디자인 컬러 토큰
+docs/
+  ai-team-api-spec.md           # AI팀에 요청한 API 3종 스펙 문서
+  flood-action-manual-research.md   # 행동요령 문구의 공식 출처 원본 조사
+  flood-action-tree-manual.md   # 행동요령 트리 구조 × 공식 문구 매핑 (actionGuideData.ts 원본)
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+## 행동요령(행동강령) 데이터는 어디 있나요
 
-### Other setup steps
+`src/constants/actionGuideData.ts`에 상황(`situationCode`)별, 위험등급(`grade`: `caution`=주의 / `danger`=위험)별 문구가 다 들어있습니다. 모든 문구는 국민재난안전포털·행정안전부 등 공식 자료 기반이며, 출처는 `docs/flood-action-tree-manual.md`에 정리되어 있습니다.
 
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
+## AI팀 연동이 필요한 부분 (지금은 랜덤 목데이터)
 
-## Learn more
+아직 AI팀 API가 없어서 아래 두 곳은 랜덤 값으로 임시 대체되어 있습니다. `docs/ai-team-api-spec.md`에 정의된 API로 교체하면 됩니다.
 
-To learn more about developing your project with Expo, look at the following resources:
+- **홈 화면 현재 상태 (API 1: 현재 상태 조회)**
+  `src/app/index.tsx` 약 58~64번째 줄 — `"22mm/h"`, `"2.4m"`이 하드코딩된 강수량/수위 텍스트입니다.
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+- **분석 결과 (API 2: 침수 위험 분석)**
+  `src/app/result.tsx` 약 51~57번째 줄 — `Math.random()`으로 `score`(위험도), `rain1h`, `rain3h`, `waterLevelChange`, `etaHours`를 만들어내고 있습니다.
 
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+  ```tsx
+  const [result] = useState(() => ({
+      score: Math.floor(Math.random() * 100),
+      rain1h: Math.floor(Math.random() * 40),
+      rain3h: Math.floor(Math.random() * 80),
+      waterLevelChange: (Math.random() * 1.2).toFixed(1),
+      etaHours: Math.floor(Math.random() * 4) + 1,
+  }));
+  ```

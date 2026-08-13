@@ -1,6 +1,6 @@
 import { colors } from '@/constants/colors';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -43,6 +43,8 @@ function getRiskInfo(score: number) {
 export default function ResultScreen() {
     const { address, region } = useLocalSearchParams<{ address?: string; region?: string }>();
     const resolvedAddress = address || region;
+    const router = useRouter();
+
     const [visibleSteps, setVisibleSteps] = useState(0);
     const [isLoading, setIsLoading] = useState(true);
 
@@ -163,7 +165,12 @@ export default function ResultScreen() {
                 </View>
 
                 {info.showAction && (
-                    <Pressable style={styles.actionButton}>
+                    <Pressable
+                        style={styles.actionButton}
+                        onPress={() => router.push({ pathname: '/action-guide', params: { grade: info.grade, address: resolvedAddress,
+                            score: String(result.score)
+                         }})}
+                    >
                         <Text style={styles.actionButtonText}>내 상황에 맞는 행동 확인</Text>
                         <Text style={styles.actionButtonArrow}>→</Text>
                     </Pressable>
