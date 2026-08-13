@@ -88,11 +88,20 @@ Authorization: Bearer {발급 예정인 API 키}
 Content-Type: application/json
 
 {
+  "lat": 37.4979,
+  "lng": 127.0276,
   "region": "서울특별시 강남구",
   "score": 72,
   "triggeredAt": "2026-08-12T14:30:00+09:00"
 }
 ```
+
+| 필드 | 타입 | 설명 |
+|---|---|---|
+| `lat` / `lng` | number | 위험 감지된 지점의 GPS 좌표. 저희 푸시서버가 이 좌표 기준으로 대상자를 매칭 |
+| `region` | string | 화면/알림 표시용 도시명 텍스트 |
+| `score` | number (0~100) | 트리거 시점의 위험도 |
+| `triggeredAt` | ISO 8601 datetime | 70 이상으로 처음 넘어간 시각 |
 
 **중요 - 호출 조건**
 - 위험도가 **70 미만 → 70 이상으로 처음 넘어가는 순간에만** 호출해주세요.
