@@ -23,8 +23,11 @@
    npx expo start
    ```
 
-4. 터미널에 뜨는 QR코드를 폰의 **Expo Go** 앱(App Store / Play 스토어에서 설치)으로 스캔
+4. 폰에 **Expo Go** 앱 설치 후, 터미널에 뜨는 QR코드 스캔
 
+   - 이 프로젝트는 **Expo SDK 57** 기준입니다. Expo Go는 프로젝트 SDK 버전과 **정확히 일치**해야 정상 연결되므로, 스토어(Play 스토어/App Store)에서 받으면 버전이 안 맞아 튕길 수 있습니다.
+   - **안드로이드**는 아래 링크에서 SDK 57 버전 Expo Go APK를 직접 받아 설치하세요 (출처를 알 수 없는 앱 설치 허용 필요):
+     https://github.com/expo/expo-go-releases/releases/download/Expo-Go-57.0.3/Expo-Go-57.0.3.apk
    - 노트북과 폰이 **같은 wifi**에 있어야 합니다.
    - 다른 네트워크(예: 폰은 데이터, 노트북은 다른 wifi)라면 `npx expo start --tunnel`로 실행하세요.
 
