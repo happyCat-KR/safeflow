@@ -1,3 +1,4 @@
+import { AI_API_BASE_URL, DEMO_LOCATION } from '@/constants/aiConfig';
 import { colors } from '@/constants/colors';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -18,7 +19,6 @@ function getRiskInfo(score: number) {
             grade: 'danger',
             label: '높음',
             badgeColor: colors.danger,
-            showEta: true,
             showAction: true,
         };
     }
@@ -27,7 +27,6 @@ function getRiskInfo(score: number) {
             grade: 'caution',
             label: '주의',
             badgeColor: colors.caution,
-            showEta: false,
             showAction: true,
         };
     }
@@ -35,31 +34,51 @@ function getRiskInfo(score: number) {
         grade: 'safe',
         label: '낮음',
         badgeColor: colors.safe,
-        showEta: false,
         showAction: false,
     };
 }
 
 export default function ResultScreen() {
-    const { address, region } = useLocalSearchParams<{ address?: string; region?: string }>();
+    const { address, region, lat, lng } = useLocalSearchParams<{
+        address?: string; region?: string; lat?: string; lng?: string;
+    }>();
     const resolvedAddress = address || region;
     const router = useRouter();
 
     const [visibleSteps, setVisibleSteps] = useState(0);
-    const [isLoading, setIsLoading] = useState(true);
+    const [stepsDone, setStepsDone] = useState(false);
+    const [result, setResult] = useState<{
+        score: number; rain1h: number; rain3h: number;
+    } | null>(null);
+    const [fetchFailed, setFetchFailed] = useState(false);
 
-    const [result] = useState(() => ({
-        score: Math.floor(Math.random() * 100),
-        rain1h: Math.floor(Math.random() * 40),
-        rain3h: Math.floor(Math.random() * 80),
-        waterLevelChange: (Math.random() * 1.2).toFixed(1),
-        etaHours: Math.floor(Math.random() * 4) + 1,
-    }));
-    const info = getRiskInfo(result.score);
+    useEffect(() => {
+        (async () => {
+            try {
+                const res = await fetch(`${AI_API_BASE_URL}/api/flood-risk`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        lat: Number(lat) || DEMO_LOCATION.lat,
+                        lng: Number(lng) || DEMO_LOCATION.lng,
+                        region: DEMO_LOCATION.region,
+                    }),
+                });
+                const data = await res.json();
+                setResult({ score: data.score, rain1h: data.rain1h, rain3h: data.rain3h });
+            } catch (e) {
+                console.log('위험도 조회 실패', e);
+                setFetchFailed(true);
+            }
+        })();
+    }, []);
+
+    const isLoading = !stepsDone || (!result && !fetchFailed);
+    const info = result ? getRiskInfo(result.score) : null;
 
     useEffect(() => {
         if (visibleSteps >= loadingSteps.length) {
-            const timer = setTimeout(() => setIsLoading(false), 500);
+            const timer = setTimeout(() => setStepsDone(true), 500);
             return () => clearTimeout(timer);
         }
 
@@ -67,32 +86,16 @@ export default function ResultScreen() {
         return () => clearTimeout(timer);
     }, [visibleSteps]);
 
-    if (!resolvedAddress) {
-        return (
-            <View style={styles.container}>
-                <SafeAreaView style={styles.safeArea}>
-                    <View style={styles.header}>
-                        <Text style={styles.headerLogo}>≋ SafeFlow</Text>
-                    </View>
-                    <View style={styles.loadingCenter}>
-                        <Text style={styles.loadingTitle}>위치 정보를 확인할 수 없어요</Text>
-                        <Text style={styles.loadingSubtitle}>홈 화면에서 다시 시도해주세요</Text>
-                    </View>
-                </SafeAreaView>
-            </View>
-        );
-    }
-
     if (isLoading) {
         return (
             <View style={styles.container}>
                 <SafeAreaView style={styles.safeArea}>
                     <View style={styles.header}>
-                        <Text style={styles.headerLogo}>≋ SafeFlow</Text>
+                        <Text style={styles.headerLogo}>≋ 비켜줄래?</Text>
                     </View>
-
                     <View style={styles.loadingCenter}>
                         <ActivityIndicator size="large" color={colors.accentBlue} />
+
                         <Text style={styles.loadingTitle}>지역 데이터를 분석 중</Text>
                         <Text style={styles.loadingSubtitle}>{resolvedAddress}</Text>
 
@@ -110,11 +113,28 @@ export default function ResultScreen() {
         );
     }
 
+    if (fetchFailed || !result || !info) {
+        return (
+            <View style={styles.container}>
+                <SafeAreaView style={styles.safeArea}>
+                    <View style={styles.header}>
+                        <Text style={styles.headerLogo}>≋ 비켜줄래?</Text>
+                    </View>
+
+                    <View style={styles.loadingCenter}>
+                        <Text style={styles.loadingTitle}>위험도를 불러오지 못했어요</Text>
+                        <Text style={styles.loadingSubtitle}>잠시 후 다시 시도해주세요</Text>
+                    </View>
+                </SafeAreaView>
+            </View>
+        );
+    }
+
     return (
         <View style={styles.container}>
             <SafeAreaView style={styles.safeArea}>
                 <View style={styles.header}>
-                    <Text style={styles.headerLogo}>≋ SafeFlow</Text>
+                    <Text style={styles.headerLogo}>≋ 비켜줄래?</Text>
                 </View>
 
                 <View style={styles.statusBadge}>
@@ -139,16 +159,6 @@ export default function ResultScreen() {
                     </View>
                 </LinearGradient>
 
-                {info.showEta && (
-                    <View style={styles.etaCard}>
-                        <Text style={styles.etaIcon}>⚠️</Text>
-                        <View>
-                            <Text style={styles.etaLabel}>예상 위험 증가</Text>
-                            <Text style={styles.etaValue}>약 {result.etaHours}시간 이내</Text>
-                        </View>
-                    </View>
-                )}
-
                 <View style={styles.statsRow}>
                     <View style={styles.statCard}>
                         <Text style={styles.statLabel}>1h 강수</Text>
@@ -158,18 +168,17 @@ export default function ResultScreen() {
                         <Text style={styles.statLabel}>3h 누적</Text>
                         <Text style={styles.statValue}>{result.rain3h}mm</Text>
                     </View>
-                    <View style={styles.statCard}>
-                        <Text style={styles.statLabel}>수위 상승</Text>
-                        <Text style={styles.statValue}>+{result.waterLevelChange}m</Text>
-                    </View>
                 </View>
 
                 {info.showAction && (
                     <Pressable
                         style={styles.actionButton}
-                        onPress={() => router.push({ pathname: '/action-guide', params: { grade: info.grade, address: resolvedAddress,
-                            score: String(result.score)
-                         }})}
+                        onPress={() => router.push({
+                            pathname: '/action-guide', params: {
+                                grade: info.grade, address: resolvedAddress,
+                                score: String(result.score)
+                            }
+                        })}
                     >
                         <Text style={styles.actionButtonText}>내 상황에 맞는 행동 확인</Text>
                         <Text style={styles.actionButtonArrow}>→</Text>

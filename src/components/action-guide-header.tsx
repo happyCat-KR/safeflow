@@ -15,7 +15,7 @@ export function ActionGuideHeader({ address, score }: Props) {
         <Pressable onPress={() => router.back()} hitSlop={8}>
           <Text style={styles.back}>‹ 뒤로</Text>
         </Pressable>
-        <Text style={styles.logo}>≋ SafeFlow</Text>
+        <Text style={styles.logo}>≋ 비켜줄래?</Text>
       </View>
       {!!address && !!score && (
         <View style={styles.badge}>

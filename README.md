@@ -1,4 +1,4 @@
-# 비켜줄래? (SafeFlow)
+# 비켜줄래?
 
 내 위치 주변의 침수 위험을 예측해주는 Expo(React Native) 앱입니다.
 

@@ -1,6 +1,6 @@
+import { AI_API_BASE_URL, DEMO_LOCATION } from '@/constants/aiConfig';
 import { colors } from '@/constants/colors';
 import { LinearGradient } from 'expo-linear-gradient';
-import * as Location from 'expo-location';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
@@ -8,32 +8,29 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function HomeScreen() {
   const router = useRouter();
-  const [address, setAddress] = useState('위치 확인 중...');
-  const [locationReady, setLocationReady] = useState(false);
+  const [address, setAddress] = useState(DEMO_LOCATION.displayName);
+  const [locationReady] = useState(true);
+  const [rainfall, setRainfall] = useState<number | null>(null);
 
   useEffect(() => {
     (async () => {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if(status !== 'granted') {
-        setAddress('위치 권한이 필요해요');
-        return;
-      }
-
-      const position = await Location.getCurrentPositionAsync({});
-      const [place] = await Location.reverseGeocodeAsync({
-        latitude: position.coords.latitude,
-        longitude: position.coords.longitude,
-      });
-
-      if(place){
-        setAddress(`${place.region ?? ''} ${place.city ?? ''} ${place.district ?? ''}`.trim());
-        setLocationReady(true)
+      try {
+        const res = await fetch(
+          `${AI_API_BASE_URL}/api/current-status?lat=${DEMO_LOCATION.lat}&lng=${DEMO_LOCATION.lng}&region=${encodeURIComponent(DEMO_LOCATION.region)}`
+        );
+        const data = await res.json();
+        setRainfall(data.currentRainfall);
+      } catch (e) {
+        console.log('강수량 조회 실패', e);
       }
     })();
   }, []);
 
   const handleAnalyze = () => {
-    router.push({ pathname: '/result', params: { address} });
+    router.push({ 
+      pathname: '/result',
+      params: { address, lat: String(DEMO_LOCATION.lat), lng: String(DEMO_LOCATION.lng) },
+    });
   }
 
   return (
@@ -56,12 +53,9 @@ export default function HomeScreen() {
         <View style={styles.statsRow}>
           <View style={styles.statCard}>
             <Text style={styles.statLabel}>🌧️ 현재 강수량</Text>
-            <Text style={styles.statValue}>22mm/h</Text>
-          </View>
-
-          <View style={styles.statCard}>
-            <Text style={styles.statLabel}>📈 현재 수위</Text>
-            <Text style={styles.statValue}>2.4m</Text>
+            <Text style={styles.statValue}>
+              {rainfall !== null ? `${rainfall}mm/h` : '불러오는 중...'}
+            </Text>
           </View>
         </View>
 
@@ -75,8 +69,8 @@ export default function HomeScreen() {
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
             style={styles.analyzeButton}
-          >            
-              <Text style={styles.analyzeButtonText}>침수 위험 분석하기</Text> 
+          >
+            <Text style={styles.analyzeButtonText}>침수 위험 분석하기</Text>
           </LinearGradient>
         </Pressable>
 
