@@ -13,7 +13,7 @@ export function ActionGuideHeader({ address, score }: Props) {
     <View>
       <View style={styles.topRow}>
         <Pressable onPress={() => router.back()} hitSlop={8}>
-          <Text style={styles.back}>‹ 뒤로</Text>
+          <Text style={styles.back}>‹ 이전</Text>
         </Pressable>
         <Text style={styles.logo}>≋ 비켜줄래?</Text>
       </View>

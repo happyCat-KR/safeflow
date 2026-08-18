@@ -1,5 +1,6 @@
 
 import { ActionGuideHeader } from '@/components/action-guide-header';
+import { FloodBackground } from '@/components/flood-background';
 import { colors } from '@/constants/colors';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
@@ -14,24 +15,25 @@ const topOptions = [
 
 export default function ActionGuideStart() {
     const router = useRouter();
-    const { grade, address, score } = useLocalSearchParams<{ grade?: string; address?: string; score?: string }>();
+    const { grade, address, score, lat, lng } = useLocalSearchParams<{ grade?: string; address?: string; score?: string; lat?: string; lng?: string }>();
 
     const handleSelect = (option: (typeof topOptions)[number]) => {
         if (option.situationCode) {
             router.push({
                 pathname: '/action-guide/result',
-                params: { situationCode: option.situationCode, grade, address, score },
+                params: { situationCode: option.situationCode, grade, address, score, lat, lng },
             });
         } else {
             router.push({
                 pathname: '/action-guide/situation',
-                params: { category: option.category, grade, address, score },
+                params: { category: option.category, grade, address, score, lat, lng },
             });
         }
     };
 
     return (
         <View style={styles.container}>
+            {(grade === 'caution' || grade === 'danger') && <FloodBackground grade={grade} />}
             <SafeAreaView style={styles.safeArea}>
                 <ActionGuideHeader address={address} score={score} />
                 <Text style={styles.title}>지금 어떤 상황이신가요?</Text>
@@ -52,7 +54,7 @@ export default function ActionGuideStart() {
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: colors.background },
+    container: { flex: 1, backgroundColor: colors.background, overflow: 'hidden' },
     safeArea: { flex: 1, paddingHorizontal: 20, paddingTop: 24 },
     title: { color: colors.textPrimary, fontSize: 22, fontWeight: '700', marginBottom: 24 },
     subtitle: { color: colors.textSecondary, fontSize: 13, marginTop: 6, marginBottom: 20 },

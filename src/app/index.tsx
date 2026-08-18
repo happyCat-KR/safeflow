@@ -1,162 +1,104 @@
-import { AI_API_BASE_URL, DEMO_LOCATION } from '@/constants/aiConfig';
+import { LocationCard } from '@/components/location-card';
+import { Cloud } from '@/components/weather-background';
 import { colors } from '@/constants/colors';
-import { LinearGradient } from 'expo-linear-gradient';
+import { useLocations } from '@/contexts/locations-context';
+import * as Location from 'expo-location';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Dimensions, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-export default function HomeScreen() {
+const { width: screenWidth } = Dimensions.get('window');
+
+export default function LocationListScreen() {
+  const [name, setName] = useState('위치 확인 중...');
   const router = useRouter();
-  const [address, setAddress] = useState(DEMO_LOCATION.displayName);
-  const [locationReady] = useState(true);
-  const [rainfall, setRainfall] = useState<number | null>(null);
+  const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const { addedLocations, removeLocation } = useLocations();
 
   useEffect(() => {
     (async () => {
-      try {
-        const res = await fetch(
-          `${AI_API_BASE_URL}/api/current-status?lat=${DEMO_LOCATION.lat}&lng=${DEMO_LOCATION.lng}&region=${encodeURIComponent(DEMO_LOCATION.region)}`
-        );
-        const data = await res.json();
-        setRainfall(data.currentRainfall);
-      } catch (e) {
-        console.log('강수량 조회 실패', e);
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        setName('위치 권한이 필요해요');
+        return;
       }
+      const position = await Location.getCurrentPositionAsync({});
+      const lat = position.coords.latitude;
+      const lng = position.coords.longitude;
+      setCoords({ lat, lng });
+
+      const places = await Location.reverseGeocodeAsync({ latitude: lat, longitude: lng });
+      const place = places[0];
+      setName(place ? `${place.city ?? ''} ${place.district ?? ''}`.trim() : '알 수 없는 위치');
     })();
   }, []);
 
-  const handleAnalyze = () => {
-    router.push({ 
-      pathname: '/result',
-      params: { address, lat: String(DEMO_LOCATION.lat), lng: String(DEMO_LOCATION.lng) },
+  const goToDetail = (params: { name: string; lat: number; lng: number; region: string }) => {
+    router.push({
+      pathname: '/location-detail',
+      params: {
+        name: params.name,
+        lat: String(params.lat),
+        lng: String(params.lng),
+        region: params.region,
+      },
     });
-  }
+  };
 
   return (
     <View style={styles.container}>
+      <View style={styles.bigCloudLayer} pointerEvents="none">
+        <Cloud delay={0} top={40} size={110} duration={26000} width={screenWidth} />
+        <Cloud delay={5000} top={520} size={90} duration={32000} width={screenWidth} />
+      </View>
       <SafeAreaView style={styles.safeArea}>
-        {/* Step 2에서 헤더 + 위치 섹션 채울 자리 */}
-
         <View style={styles.header}>
-          <Text style={styles.headerLogo}>≋ 비켜줄래?</Text>
+          <Text style={styles.headerTitle}>날씨</Text>
+          <Pressable onPress={() => router.push('/location-search')}>
+            <Text style={styles.addButton}>+</Text>
+          </Pressable>
         </View>
 
-        <View style={styles.locationSection}>
-          <Text style={styles.locationLabel}>📍 현재 위치 · GPS</Text>
-          <Text style={styles.locationTitle}>{address}</Text>
-          <Text style={styles.locationDesc}>
-            내 위치 주변의 침수 위험을 AI가 실시간으로 예측합니다.
-          </Text>
+        <View style={styles.list}>
+          {coords && (
+            <LocationCard
+              name={name}
+              subtitle="나의 위치"
+              lat={coords.lat ?? null}
+              lng={coords.lng ?? null}
+              onPress={() => goToDetail({ name, lat: coords.lat, lng: coords.lng, region: name })}
+            />
+          )}
+
+          {addedLocations.map((loc) => (
+            <LocationCard
+              key={loc.id}
+              name={loc.name}
+              subtitle={loc.region}
+              lat={loc.lat}
+              lng={loc.lng}
+              onPress={() => goToDetail({ name: loc.name, lat: loc.lat, lng: loc.lng, region: loc.region })}
+              onDelete={() => removeLocation(loc.id)}
+            />
+          ))}
         </View>
-
-        <View style={styles.statsRow}>
-          <View style={styles.statCard}>
-            <Text style={styles.statLabel}>🌧️ 현재 강수량</Text>
-            <Text style={styles.statValue}>
-              {rainfall !== null ? `${rainfall}mm/h` : '불러오는 중...'}
-            </Text>
-          </View>
-        </View>
-
-        <Pressable
-          onPress={handleAnalyze}
-          disabled={!locationReady}
-          style={({ pressed }) => ({ opacity: !locationReady ? 0.4 : pressed ? 0.8 : 1 })}
-        >
-          <LinearGradient
-            colors={[colors.accentTeal, colors.accentBlue]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={styles.analyzeButton}
-          >
-            <Text style={styles.analyzeButtonText}>침수 위험 분석하기</Text>
-          </LinearGradient>
-        </Pressable>
-
-        <Text style={styles.infoText}>
-          ⓘ 본 위험도는 공공데이터 기반 AI 예측 결과이며, 공식 재난 경보를 대체하지 않습니다.
-        </Text>
       </SafeAreaView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: colors.background, overflow: 'hidden' },
+  bigCloudLayer: { ...StyleSheet.absoluteFillObject, opacity: 0.15 },
+  safeArea: { flex: 1, paddingHorizontal: 20, paddingTop: 12 },
   header: {
-    alignItems: 'flex-end',
-  },
-  headerLogo: {
-    color: colors.textSecondary,
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  locationSection: {
-    marginTop: 24,
-  },
-  locationLabel: {
-    color: colors.accentTeal,
-    fontSize: 13,
-    fontWeight: '600',
-    marginBottom: 8,
-  },
-  locationTitle: {
-    color: colors.textPrimary,
-    fontSize: 28,
-    fontWeight: '700',
-    marginBottom: 8,
-  },
-  locationDesc: {
-    color: colors.textSecondary,
-    fontSize: 14,
-    lineHeight: 20,
-  },
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  safeArea: {
-    flex: 1,
-    paddingHorizontal: 20,
-    paddingTop: 12,
-  },
-
-  statsRow: {
     flexDirection: 'row',
-    gap: 12,
-    marginTop: 24,
-  },
-  statCard: {
-    flex: 1,
-    backgroundColor: colors.card,
-    borderRadius: 16,
-    padding: 16,
-  },
-  statLabel: {
-    color: colors.textSecondary,
-    fontSize: 13,
-    marginBottom: 12,
-  },
-  statValue: {
-    color: colors.textPrimary,
-    fontSize: 22,
-    fontWeight: '700',
-  },
-  analyzeButton: {
-    marginTop: 24,
-    borderRadius: 14,
-    paddingVertical: 16,
+    justifyContent: 'space-between',
     alignItems: 'center',
+    marginBottom: 16,
   },
-  analyzeButtonText: {
-    color: colors.background,
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  infoText: {
-    color: colors.textSecondary,
-    fontSize: 12,
-    lineHeight: 18,
-    marginTop: 16,
-  },
+  headerTitle: { color: colors.textPrimary, fontSize: 32, fontWeight: '700' },
+  addButton: { color: colors.accentBlue, fontSize: 28, fontWeight: '700' },
+  list: { gap: 16 },
 });

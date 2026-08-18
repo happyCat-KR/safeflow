@@ -1,5 +1,7 @@
-import { AI_API_BASE_URL, DEMO_LOCATION } from '@/constants/aiConfig';
+import { AI_API_BASE_URL } from '@/constants/aiConfig';
 import { colors } from '@/constants/colors';
+import { FloodBackground } from '@/components/flood-background';
+import { getDemoScoreOverride } from '@/utils/demoScore';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
@@ -51,6 +53,7 @@ export default function ResultScreen() {
         score: number; rain1h: number; rain3h: number;
     } | null>(null);
     const [fetchFailed, setFetchFailed] = useState(false);
+    const [unsupportedRegion, setUnsupportedRegion] = useState(false);
 
     useEffect(() => {
         (async () => {
@@ -59,13 +62,26 @@ export default function ResultScreen() {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
-                        lat: Number(lat) || DEMO_LOCATION.lat,
-                        lng: Number(lng) || DEMO_LOCATION.lng,
-                        region: DEMO_LOCATION.region,
+                        lat: Number(lat),
+                        lng: Number(lng),
+                        region: resolvedAddress ?? '',
                     }),
                 });
+                if (res.status === 400) {
+                    setUnsupportedRegion(true);
+                    return;
+                }
+                if (!res.ok) {
+                    setFetchFailed(true);
+                    return;
+                }
                 const data = await res.json();
-                setResult({ score: data.score, rain1h: data.rain1h, rain3h: data.rain3h });
+                const override = getDemoScoreOverride(region ?? '');
+                if (override) {
+                    setResult(override);
+                } else {
+                    setResult({ score: data.score, rain1h: data.rain1h, rain3h: data.rain3h });
+                }
             } catch (e) {
                 console.log('위험도 조회 실패', e);
                 setFetchFailed(true);
@@ -73,7 +89,7 @@ export default function ResultScreen() {
         })();
     }, []);
 
-    const isLoading = !stepsDone || (!result && !fetchFailed);
+    const isLoading = !stepsDone || (!result && !fetchFailed && !unsupportedRegion);
     const info = result ? getRiskInfo(result.score) : null;
 
     useEffect(() => {
@@ -91,6 +107,9 @@ export default function ResultScreen() {
             <View style={styles.container}>
                 <SafeAreaView style={styles.safeArea}>
                     <View style={styles.header}>
+                        <Pressable onPress={() => router.back()}>
+                            <Text style={styles.backButton}>‹ 이전</Text>
+                        </Pressable>
                         <Text style={styles.headerLogo}>≋ 비켜줄래?</Text>
                     </View>
                     <View style={styles.loadingCenter}>
@@ -113,11 +132,33 @@ export default function ResultScreen() {
         );
     }
 
+    if (unsupportedRegion) {
+        return (
+            <View style={styles.container}>
+                <SafeAreaView style={styles.safeArea}>
+                    <View style={styles.header}>
+                        <Pressable onPress={() => router.back()}>
+                            <Text style={styles.backButton}>‹ 이전</Text>
+                        </Pressable>
+                        <Text style={styles.headerLogo}>≋ 비켜줄래?</Text>
+                    </View>
+                    <View style={styles.loadingCenter}>
+                        <Text style={styles.loadingTitle}>아직 AI 분석을 지원하지 않는 지역입니다</Text>
+                        <Text style={styles.loadingSubtitle}>현재 지원 지역: 강남구 · 관악구 · 제주</Text>
+                    </View>
+                </SafeAreaView>
+            </View>
+        );
+    }
+
     if (fetchFailed || !result || !info) {
         return (
             <View style={styles.container}>
                 <SafeAreaView style={styles.safeArea}>
                     <View style={styles.header}>
+                        <Pressable onPress={() => router.back()}>
+                            <Text style={styles.backButton}>‹ 이전</Text>
+                        </Pressable>
                         <Text style={styles.headerLogo}>≋ 비켜줄래?</Text>
                     </View>
 
@@ -132,8 +173,12 @@ export default function ResultScreen() {
 
     return (
         <View style={styles.container}>
+            <FloodBackground grade={info.grade as 'safe' | 'caution' | 'danger'} />
             <SafeAreaView style={styles.safeArea}>
                 <View style={styles.header}>
+                    <Pressable onPress={() => router.back()}>
+                        <Text style={styles.backButton}>‹ 이전</Text>
+                    </Pressable>
                     <Text style={styles.headerLogo}>≋ 비켜줄래?</Text>
                 </View>
 
@@ -176,7 +221,7 @@ export default function ResultScreen() {
                         onPress={() => router.push({
                             pathname: '/action-guide', params: {
                                 grade: info.grade, address: resolvedAddress,
-                                score: String(result.score)
+                                score: String(result.score), lat, lng
                             }
                         })}
                     >
@@ -197,6 +242,7 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: colors.background,
+        overflow: 'hidden',
     },
     safeArea: {
         flex: 1,
@@ -204,7 +250,14 @@ const styles = StyleSheet.create({
         paddingTop: 12,
     },
     header: {
-        alignItems: 'flex-end',
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+    },
+    backButton: {
+        color: colors.textSecondary,
+        fontSize: 15,
+        fontWeight: '600',
     },
     headerLogo: {
         color: colors.textSecondary,

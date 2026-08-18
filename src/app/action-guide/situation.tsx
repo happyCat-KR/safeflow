@@ -1,4 +1,5 @@
 import { ActionGuideHeader } from '@/components/action-guide-header';
+import { FloodBackground } from '@/components/flood-background';
 import { colors } from '@/constants/colors';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
@@ -18,20 +19,23 @@ const optionsByCategory = {
 
 export default function ActionGuideSituation() {
     const router = useRouter();
-    const { category, grade, address, score } = useLocalSearchParams<{
+    const { category, grade, address, score, lat, lng } = useLocalSearchParams<{
         category?: 'building' | 'driving';
         grade?: string;
         address?: string;
         score?: string;
+        lat?: string;
+        lng?: string;
     }>();
     const options = category ? optionsByCategory[category] : [];
 
     const handleSelect = (situationCode: string) => {
-        router.push({ pathname: '/action-guide/result', params: { situationCode, grade, address, score } });
+        router.push({ pathname: '/action-guide/result', params: { situationCode, grade, address, score, lat, lng } });
     };
 
     return (
         <View style={styles.container}>
+            {(grade === 'caution' || grade === 'danger') && <FloodBackground grade={grade} />}
             <SafeAreaView style={styles.safeArea}>
                 <ActionGuideHeader address={address} score={score} />
 
@@ -60,7 +64,7 @@ export default function ActionGuideSituation() {
 }
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: colors.background },
+    container: { flex: 1, backgroundColor: colors.background, overflow: 'hidden' },
     safeArea: { flex: 1, paddingHorizontal: 20, paddingTop: 24 },
     title: { color: colors.textPrimary, fontSize: 22, fontWeight: '700', marginBottom: 24 },
     subtitle: { color: colors.textSecondary, fontSize: 13, marginTop:6, marginBottom: 12},
